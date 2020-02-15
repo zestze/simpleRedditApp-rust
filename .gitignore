@@ -1,2 +1,5 @@
 /target
 **/*.rs.bk
+*client.secret*
+*user.pass*
+*user.id*
