@@ -1,34 +1,8 @@
-extern crate clap;
 use clap::{Arg, App};
+mod reddit_client;
 
-//TODO: put in separate class...
-struct RedditClient {
-    username: String,
-    password: String,
-    client_id: String,
-    client_secret: String,
-    session_token: String,
-    session_token_type: String
-}
-
-impl RedditClient {
-    fn new(username: &str) -> RedditClient {
-        return RedditClient {
-            username: username.to_string(),
-            password: username.to_string(),
-            client_id: username.to_string(),
-            client_secret: username.to_string(),
-            session_token: username.to_string(),
-            session_token_type: username.to_string()
-        }
-    }
-    fn run(&self, filter: &str, should_map: bool) {
-        println!("filter is: {}", filter);
-        println!("should is: {}", should_map);
-    }
-}
-
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = App::new("simple_reddit_app")
         .version("0.1")
         .author("zest")
@@ -45,10 +19,7 @@ fn main() {
              .help("if given, indicates to print a category map of saved posts"))
         .get_matches();
 
-    println!("matches filter is: {}", matches.value_of("filter").unwrap());
-    println!("matches map exists: {}", matches.is_present("map"));
-
-    let reddit_client = RedditClient::new("blah");
-    reddit_client.run(matches.value_of("filter").unwrap(),
-                        matches.is_present("map"));
+    let client = reddit_client::RedditClient::new();
+    client.run(matches.value_of("filter").unwrap(),
+            matches.is_present("map")).await
 }
