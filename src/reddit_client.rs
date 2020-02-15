@@ -1,5 +1,4 @@
 use std::fs;
-use hyper::header;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -52,12 +51,14 @@ impl RedditClient {
             .await?;
         let resp_status = resp.status();
 
-        resp.json().await
+        //TODO: is there a more elegant way of doing this?
+        let auth_response = resp.json::<AuthResponse>().await?;
+        Ok(auth_response)
     }
 
     pub async fn run(&self, filter: &str, should_map: bool) -> 
         Result<(), Box<dyn std::error::Error>> {
-        auth_response = self.authorize().await?;
+        let auth_response = self.authorize().await?;
 
         Ok(())
     }
