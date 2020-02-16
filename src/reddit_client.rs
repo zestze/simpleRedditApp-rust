@@ -1,6 +1,7 @@
 use std::fs;
 use serde::Deserialize;
 use std::collections::HashSet;
+use std::collections::HashMap;
 
 const USER_AGENT: &str = "simpleRedditClient/0.1 by ZestyZeke";
 
@@ -34,7 +35,7 @@ struct Child {
 #[derive(Deserialize, Debug)]
 struct ResponseData {
     children: Vec<Child>,
-    after: String
+    after: Option<String>
 }
 
 #[derive(Deserialize, Debug)]
@@ -77,11 +78,10 @@ async fn get_saved_posts(endpoint: &str,
 
     //TODO: check rate limiting...
     //println!("{}", resp.text().await?);
-
     Ok(resp.data)
 }
 
-fn parse_response(saved_posts: &ResponseData, filter: &String) -> String {
+fn parse_response(saved_posts: &ResponseData, filter: &String) -> Option<String> {
 
     let reddit_url = "https://www.reddit.com";
     for child in saved_posts.children.iter() {
@@ -145,17 +145,41 @@ impl RedditClient {
         let mut seen_posts = HashSet::new();
         let mut last_seen_post = parse_response(&saved_posts, &filter);
 
-        while !seen_posts.contains(&last_seen_post) {
+        let mut subreddit_map = HashMap::new();
+
+        while last_seen_post.is_some() && 
+            !seen_posts.contains(&last_seen_post) {
             seen_posts.insert(last_seen_post.clone());
 
             saved_posts = get_saved_posts(&endpoint, &client, &auth_response, 
-                                          Some(&last_seen_post))
+                                          last_seen_post.as_ref())
                 .await?;
 
-            last_seen_post = parse_response(&saved_posts, &filter)
+            last_seen_post = parse_response(&saved_posts, &filter);
+            update_map(&mut subreddit_map, &saved_posts);
         }
-        //TODO: log and do map... also reevaluate move semantics and cloning
 
+        if should_map {
+            print_map(subreddit_map);
+        }
         Ok(())
+    }
+}
+
+fn print_map(subreddit_map: HashMap<String, u32>) {
+    let mut list: Vec<(&String, &u32)> = subreddit_map.iter().collect();
+    list.sort_by(|a, b| b.1.cmp(a.1));
+
+    for (name, count) in list {
+        println!("{:<30}: {}", name, count);
+    }
+}
+
+fn update_map(subreddit_map: &mut HashMap<String, u32>, saved_posts: &ResponseData) {
+    for child in saved_posts.children.iter() {
+        let subreddit_name = child.data.subreddit.to_string();
+        subreddit_map.entry(subreddit_name)
+            .and_modify(|e| *e += 1)
+            .or_insert(1);
     }
 }
