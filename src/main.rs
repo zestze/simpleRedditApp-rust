@@ -20,6 +20,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get_matches();
 
     let client = reddit_client::RedditClient::new();
-    client.run(matches.value_of("filter").unwrap(),
-            matches.is_present("map")).await
+    let filter = matches.value_of("filter")
+        .unwrap()
+        .to_string()
+        .to_lowercase();
+    client.run(filter, matches.is_present("map"))
+        .await
 }

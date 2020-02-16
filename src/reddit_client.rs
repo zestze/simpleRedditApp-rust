@@ -19,11 +19,44 @@ pub struct RedditClient {
     client_secret: String
 }
 
+//TODO: should put all of these in a sperate file...
+#[derive(Deserialize, Debug)]
+struct ChildData {
+    subreddit: String,
+    permalink: String
+}
+
+#[derive(Deserialize, Debug)]
+struct Child {
+    data: ChildData 
+}
+
+#[derive(Deserialize, Debug)]
+struct ResponseData {
+    children: Vec<Child>,
+    after: String
+}
+
+#[derive(Deserialize, Debug)]
+struct ApiResponse {
+    data: ResponseData 
+}
+
+// {
+//   'children': [
+//        'data': {
+//          'subreddit': <val>,
+//          'permalink': <val>
+//        }
+//   ]
+// }
+
+ 
 async fn get_saved_posts(endpoint: &str, 
                          client: &reqwest::Client, 
-                         auth_info: AuthResponse,
-                         last_received: Option<String>) ->
-    Result<serde_json::Value, Box<dyn std::error::Error>> {
+                         auth_info: &AuthResponse,
+                         last_received: Option<&String>) ->
+    Result<ResponseData, Box<dyn std::error::Error>> {
 
     let api_name = "https://oauth.reddit.com";
     let mut api_url = format!("{}{}", api_name, endpoint).to_string();
@@ -37,7 +70,7 @@ async fn get_saved_posts(endpoint: &str,
         .header("User-Agent", USER_AGENT);
     let resp = builder.send()
         .await?
-        .json::<serde_json::Value>()
+        .json::<ApiResponse>()
         .await?;
     //TODO: do something with the resp status?
     //let resp_status = resp.status();
@@ -45,13 +78,19 @@ async fn get_saved_posts(endpoint: &str,
     //TODO: check rate limiting...
     //println!("{}", resp.text().await?);
 
-    Ok(resp["data"].clone())
+    Ok(resp.data)
 }
 
-fn parse_response(saved_posts: &serde_json::Value, filter: &str) -> String {
+fn parse_response(saved_posts: &ResponseData, filter: &String) -> String {
 
-
-    "".to_string()
+    let reddit_url = "https://www.reddit.com";
+    for child in saved_posts.children.iter() {
+        let data = &child.data;
+        if *filter == data.subreddit.to_lowercase() {
+            println!("{}{}", reddit_url, data.permalink);
+        }
+    }
+    saved_posts.after.clone()
 }
 
 
@@ -94,17 +133,28 @@ impl RedditClient {
         Ok(auth_response)
     }
 
-    pub async fn run(&self, filter: &str, should_map: bool) -> 
+    pub async fn run(&self, filter: String, should_map: bool) -> 
         Result<(), Box<dyn std::error::Error>> {
         let client = reqwest::Client::new();
         let auth_response = self.authorize(&client).await?;
 
         let endpoint = format!("/user/{}/saved", self.username);
-        let saved_posts = get_saved_posts(&endpoint, &client, auth_response, None)
+        let mut saved_posts = get_saved_posts(&endpoint, &client, &auth_response, None)
             .await?;
 
-        //let mut seen_posts = HashSet::new();
-        parse_response(&saved_posts, filter);
+        let mut seen_posts = HashSet::new();
+        let mut last_seen_post = parse_response(&saved_posts, &filter);
+
+        while !seen_posts.contains(&last_seen_post) {
+            seen_posts.insert(last_seen_post.clone());
+
+            saved_posts = get_saved_posts(&endpoint, &client, &auth_response, 
+                                          Some(&last_seen_post))
+                .await?;
+
+            last_seen_post = parse_response(&saved_posts, &filter)
+        }
+        //TODO: log and do map... also reevaluate move semantics and cloning
 
         Ok(())
     }
