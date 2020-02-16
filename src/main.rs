@@ -1,5 +1,6 @@
 use clap::{Arg, App};
 mod reddit_client;
+mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
