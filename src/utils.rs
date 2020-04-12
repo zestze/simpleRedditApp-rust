@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use std::collections::HashMap;
+use url::Url;
 
 pub const USER_AGENT: &str = "simpleRedditClient/0.1 by ZestyZeke";
 
@@ -48,26 +49,32 @@ pub async fn get_saved_posts(endpoint: &str,
                              last_received: Option<&String>) ->
     Result<ResponseData, Box<dyn std::error::Error>> {
 
-    let api_name = "https://oauth.reddit.com";
-    let mut api_url = format!("{}{}", api_name, endpoint).to_string();
+    let mut api_url = Url::parse("https://oauth.reddit.com")?;
+    api_url.set_path(&endpoint);
     if let Some(last) = &last_received {
-        api_url = format!("{}?after={}", api_url, last).to_string();
+        api_url.query_pairs_mut()
+            .append_pair("after", last);
     }
 
     let auth_value = format!("{} {}", auth_info.token_type, auth_info.access_token);
-    let builder = client.get(&api_url)
+    let builder = client.get(api_url.as_str())
         .header("Authorization", auth_value)
         .header("User-Agent", USER_AGENT);
     let resp = builder.send()
-        .await?
-        .json::<ApiResponse>()
         .await?;
-    //TODO: do something with the resp status?
-    //let resp_status = resp.status();
+    if resp.status().is_server_error() {
+        panic!("encountered invalid status: {}", resp.status())
+        //resp.error_for_status()? TODO: get this to work somehow...
+
+    } else {
+        let api_response = resp.json::<ApiResponse>()
+            .await?;
+        Ok(api_response.data)
 
     //TODO: check rate limiting...
     //println!("{}", resp.text().await?);
-    Ok(resp.data)
+    }
+
 }
 
 pub fn parse_response(saved_posts: &ResponseData, filter: &String) -> Option<String> {
