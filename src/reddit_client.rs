@@ -1,7 +1,7 @@
-use std::fs;
 use std::collections::HashSet;
 use std::collections::HashMap;
 use crate::utils::*;
+use crate::config::Config;
 
 pub struct RedditClient {
     username: String,
@@ -12,18 +12,13 @@ pub struct RedditClient {
 
 impl RedditClient {
     pub fn new() -> RedditClient {
-        let load_file = |f| -> String {
-            fs::read_to_string(f)
-                .expect("wasn't able to read file!")
-                .trim_end()
-                .to_string()
-        };
+        let config = Config::new("creds/config.json");
 
         return RedditClient {
-            username: load_file("creds/user.name"),
-            password: load_file("creds/user.pass"),
-            client_id: load_file("creds/client.id"),
-            client_secret: load_file("creds/client.secret")
+            username: config.user.name,
+            password: config.user.password,
+            client_id: config.client.id,
+            client_secret: config.client.secret
         }
     }
 
