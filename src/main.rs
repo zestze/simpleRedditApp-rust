@@ -2,6 +2,7 @@ use clap::{Arg, App};
 mod reddit_client;
 mod utils;
 mod config;
+mod models;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 use std::collections::HashMap;
-use crate::utils::*;
+use crate::utils;
 use crate::config::Config;
+use crate::models;
 
 pub struct RedditClient {
     username: String,
@@ -23,7 +24,7 @@ impl RedditClient {
     }
 
     async fn authorize(&self, client: &reqwest::Client) -> 
-        Result<AuthResponse, Box<dyn std::error::Error>> {
+        Result<models::AuthResponse, Box<dyn std::error::Error>> {
 
         let auth_url = "https://www.reddit.com/api/v1/access_token";
 
@@ -32,7 +33,7 @@ impl RedditClient {
 
         let builder = client.post(auth_url)
             .basic_auth(&self.client_id, Some(&self.client_secret))
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", models::USER_AGENT)
             .form(&params);
         let resp = builder.send()
             .await?;
@@ -40,7 +41,7 @@ impl RedditClient {
         //let resp_status = resp.status();
 
         //TODO: is there a more elegant way of doing this?
-        let auth_response = resp.json::<AuthResponse>().await?;
+        let auth_response = resp.json::<models::AuthResponse>().await?;
         Ok(auth_response)
     }
 
@@ -50,11 +51,11 @@ impl RedditClient {
         let auth_response = self.authorize(&client).await?;
 
         let endpoint = format!("/user/{}/saved", self.username);
-        let mut saved_posts = get_saved_posts(&endpoint, &client, &auth_response, None)
+        let mut saved_posts = utils::get_saved_posts(&endpoint, &client, &auth_response, None)
             .await?;
 
         let mut seen_posts = HashSet::new();
-        let mut last_seen_post = parse_response(&saved_posts, &filter);
+        let mut last_seen_post = utils::parse_response(&saved_posts, &filter);
 
         let mut subreddit_map = HashMap::new();
 
@@ -62,16 +63,16 @@ impl RedditClient {
             !seen_posts.contains(&last_seen_post) {
             seen_posts.insert(last_seen_post.clone());
 
-            saved_posts = get_saved_posts(&endpoint, &client, &auth_response, 
+            saved_posts = utils::get_saved_posts(&endpoint, &client, &auth_response, 
                                           last_seen_post.as_ref())
                 .await?;
 
-            last_seen_post = parse_response(&saved_posts, &filter);
-            update_map(&mut subreddit_map, &saved_posts);
+            last_seen_post = utils::parse_response(&saved_posts, &filter);
+            utils::update_map(&mut subreddit_map, &saved_posts);
         }
 
         if should_map {
-            print_map(subreddit_map);
+            utils::print_map(subreddit_map);
         }
         Ok(())
     }

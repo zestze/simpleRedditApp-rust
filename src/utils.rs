@@ -1,53 +1,12 @@
-use serde::Deserialize;
 use std::collections::HashMap;
 use url::Url;
+use crate::models;
 
-pub const USER_AGENT: &str = "simpleRedditClient/0.1 by ZestyZeke";
-
-#[derive(Deserialize, Debug)]
-pub struct AuthResponse {
-    access_token: String,
-    token_type: String,
-    expires_in: i32,
-    scope: String
-}
-
-#[derive(Deserialize, Debug)]
-pub struct ChildData {
-    subreddit: String,
-    permalink: String
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Child {
-    data: ChildData 
-}
-
-#[derive(Deserialize, Debug)]
-pub struct ResponseData {
-    children: Vec<Child>,
-    after: Option<String>
-}
-
-#[derive(Deserialize, Debug)]
-pub struct ApiResponse {
-    data: ResponseData 
-}
-
-// {
-//   'children': [
-//        'data': {
-//          'subreddit': <val>,
-//          'permalink': <val>
-//        }
-//   ]
-// }
- 
 pub async fn get_saved_posts(endpoint: &str, 
                              client: &reqwest::Client, 
-                             auth_info: &AuthResponse,
+                             auth_info: &models::AuthResponse,
                              last_received: Option<&String>) ->
-    Result<ResponseData, Box<dyn std::error::Error>> {
+    Result<models::ResponseData, Box<dyn std::error::Error>> {
 
     let mut api_url = Url::parse("https://oauth.reddit.com")?;
     api_url.set_path(&endpoint);
@@ -59,7 +18,7 @@ pub async fn get_saved_posts(endpoint: &str,
     let auth_value = format!("{} {}", auth_info.token_type, auth_info.access_token);
     let builder = client.get(api_url.as_str())
         .header("Authorization", auth_value)
-        .header("User-Agent", USER_AGENT);
+        .header("User-Agent", models::USER_AGENT);
     let resp = builder.send()
         .await?;
     if resp.status().is_server_error() {
@@ -67,7 +26,7 @@ pub async fn get_saved_posts(endpoint: &str,
         //resp.error_for_status()? TODO: get this to work somehow...
 
     } else {
-        let api_response = resp.json::<ApiResponse>()
+        let api_response = resp.json::<models::ApiResponse>()
             .await?;
         Ok(api_response.data)
 
@@ -77,7 +36,7 @@ pub async fn get_saved_posts(endpoint: &str,
 
 }
 
-pub fn parse_response(saved_posts: &ResponseData, filter: &String) -> Option<String> {
+pub fn parse_response(saved_posts: &models::ResponseData, filter: &String) -> Option<String> {
 
     let reddit_url = "https://www.reddit.com";
     for child in saved_posts.children.iter() {
@@ -98,7 +57,7 @@ pub fn print_map(subreddit_map: HashMap<String, u32>) {
     }
 }
 
-pub fn update_map(subreddit_map: &mut HashMap<String, u32>, saved_posts: &ResponseData) {
+pub fn update_map(subreddit_map: &mut HashMap<String, u32>, saved_posts: &models::ResponseData) {
     for child in saved_posts.children.iter() {
         let subreddit_name = child.data.subreddit.to_string();
         subreddit_map.entry(subreddit_name)
