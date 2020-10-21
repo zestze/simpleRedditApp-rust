@@ -1,4 +1,5 @@
 use clap::{Arg, App};
+use std::io::{Error, ErrorKind};
 mod reddit_client;
 mod utils;
 mod config;
@@ -24,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = reddit_client::RedditClient::new();
     let filter = matches.value_of("filter")
-        .unwrap()
+        .ok_or(Error::new(ErrorKind::NotFound, "filter arg is missing"))?
         .to_string()
         .to_lowercase();
     client.run(filter, matches.is_present("map"))

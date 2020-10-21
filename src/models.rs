@@ -13,7 +13,13 @@ pub struct AuthResponse {
 #[derive(Deserialize, Debug)]
 pub struct ChildData {
     pub subreddit: String,
-    pub permalink: String
+    pub permalink: String,
+    pub num_comments: i32,
+    pub upvote_ratio: Option<f32>,
+    pub ups: i32,
+    pub score: i32,
+    pub total_awards_received: i32,
+    pub suggested_sort: Option<String>
 }
 
 #[derive(Deserialize, Debug)]
