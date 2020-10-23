@@ -36,14 +36,20 @@ pub async fn get_saved_posts(endpoint: &str,
 
 }
 
-pub fn parse_response(saved_posts: &models::ResponseData, filter: &String) -> Option<String> {
+pub fn parse_response(saved_posts: &models::ResponseData, 
+                      filter: &Option<String>) -> Option<String> {
 
     let reddit_url = "https://www.reddit.com";
     for child in saved_posts.children.iter() {
         let data = &child.data;
-        if *filter == data.subreddit.to_lowercase() {
-            println!("{}{}", reddit_url, data.permalink);
-        }
+        match filter {
+            Some(f) => {
+                if *f == data.subreddit.to_lowercase() {
+                    println!("{}{}", reddit_url, data.permalink);
+                }
+            },
+            _ => println!("{}{}", reddit_url, data.permalink),
+        };
     }
     saved_posts.after.clone()
 }

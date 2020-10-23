@@ -45,7 +45,7 @@ impl RedditClient {
         Ok(auth_response)
     }
 
-    pub async fn run(&self, filter: String, should_map: bool) -> 
+    pub async fn run(&self, filter: Option<String>, should_map: bool) -> 
         Result<(), Box<dyn std::error::Error>> {
         let client = reqwest::Client::new();
         let auth_response = self.authorize(&client).await?;

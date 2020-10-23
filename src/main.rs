@@ -1,9 +1,18 @@
 use clap::{Arg, App};
-use std::io::{Error, ErrorKind};
 mod reddit_client;
 mod utils;
 mod config;
 mod models;
+
+fn to_lower(word: Option<&str>) -> Option<String> {
+    match word {
+        Some(w) => {
+            Some(w.to_string()
+                 .to_lowercase())
+        },
+        _ => None,
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,7 +24,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
              .short("f")
              .long("filter")
              .help("the subreddit to filter on")
-             .required(true)
              .takes_value(true))
         .arg(Arg::with_name("map")
              .short("m")
@@ -24,10 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get_matches();
 
     let client = reddit_client::RedditClient::new();
-    let filter = matches.value_of("filter")
-        .ok_or(Error::new(ErrorKind::NotFound, "filter arg is missing"))?
-        .to_string()
-        .to_lowercase();
+    let filter = to_lower(matches.value_of("filter"));
     client.run(filter, matches.is_present("map"))
         .await
 }
