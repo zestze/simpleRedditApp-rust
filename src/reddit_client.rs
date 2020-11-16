@@ -2,28 +2,24 @@ use std::collections::HashSet;
 use crate::utils;
 use crate::config::Config;
 use crate::models;
-use crate::mapper;
+use crate::subparsers;
 
 pub struct RedditClient {
     username: String,
     password: String,
     client_id: String,
     client_secret: String,
-    subparsers: Vec<Box<dyn mapper::SubParser>>
 }
 
 impl RedditClient {
-    pub fn new(map: bool) -> Self {
+    pub fn new() -> Self {
         let config = Config::new("creds/config.json");
 
-        let mut subparsers = Vec::<Box<dyn mapper::SubParser>>::new();
-        if map { subparsers.push(Box::new(mapper::Mapper::new())); }
         RedditClient {
             username: config.user.name,
             password: config.user.password,
             client_id: config.client.id,
-            client_secret: config.client.secret,
-            subparsers: subparsers
+            client_secret: config.client.secret
         }
     }
 
@@ -49,7 +45,7 @@ impl RedditClient {
         Ok(auth_response)
     }
 
-    pub async fn run(&mut self, filter: Option<String>) -> 
+    pub async fn run(&self, filter: Option<String>, mut sparsers: subparsers::List) -> 
         Result<(), Box<dyn std::error::Error>> {
         let client = reqwest::Client::new();
         let auth_response = self.authorize(&client).await?;
@@ -70,12 +66,12 @@ impl RedditClient {
                 .await?;
 
             last_seen_post = utils::parse_response(&saved_posts, &filter);
-            for subparser in self.subparsers.iter_mut() {
+            for subparser in sparsers.iter_mut() {
                 subparser.update(&saved_posts);
             }
         }
 
-        for subparser in self.subparsers.iter_mut() {
+        for subparser in sparsers.iter_mut() {
             subparser.print();
         }
         Ok(())

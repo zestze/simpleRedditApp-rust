@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get_matches();
 
     let filter = to_lower(matches.value_of("filter"));
-    let mut client = reddit_client::RedditClient::new(matches.is_present("map"));
-    //TODO: maybe pass subparsers to run function? so don't have to make client mut'able?
-    client.run(filter).await
+    let client = reddit_client::RedditClient::new();
+    let l = subparsers::new(matches.is_present("map"));
+    client.run(filter, l).await
 }
