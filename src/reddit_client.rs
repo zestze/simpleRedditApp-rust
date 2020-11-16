@@ -1,25 +1,29 @@
 use std::collections::HashSet;
-use std::collections::HashMap;
 use crate::utils;
 use crate::config::Config;
 use crate::models;
+use crate::mapper;
 
 pub struct RedditClient {
     username: String,
     password: String,
     client_id: String,
-    client_secret: String
+    client_secret: String,
+    subparsers: Vec<Box<dyn mapper::SubParser>>
 }
 
 impl RedditClient {
-    pub fn new() -> RedditClient {
+    pub fn new(map: bool) -> Self {
         let config = Config::new("creds/config.json");
 
-        return RedditClient {
+        let mut subparsers = Vec::<Box<dyn mapper::SubParser>>::new();
+        if map { subparsers.push(Box::new(mapper::Mapper::new())); }
+        RedditClient {
             username: config.user.name,
             password: config.user.password,
             client_id: config.client.id,
-            client_secret: config.client.secret
+            client_secret: config.client.secret,
+            subparsers: subparsers
         }
     }
 
@@ -45,7 +49,7 @@ impl RedditClient {
         Ok(auth_response)
     }
 
-    pub async fn run(&self, filter: Option<String>, should_map: bool) -> 
+    pub async fn run(&mut self, filter: Option<String>) -> 
         Result<(), Box<dyn std::error::Error>> {
         let client = reqwest::Client::new();
         let auth_response = self.authorize(&client).await?;
@@ -57,8 +61,6 @@ impl RedditClient {
         let mut seen_posts = HashSet::new();
         let mut last_seen_post = utils::parse_response(&saved_posts, &filter);
 
-        let mut subreddit_map = HashMap::new();
-
         while last_seen_post.is_some() && 
             !seen_posts.contains(&last_seen_post) {
             seen_posts.insert(last_seen_post.clone());
@@ -68,11 +70,13 @@ impl RedditClient {
                 .await?;
 
             last_seen_post = utils::parse_response(&saved_posts, &filter);
-            utils::update_map(&mut subreddit_map, &saved_posts);
+            for subparser in self.subparsers.iter_mut() {
+                subparser.update(&saved_posts);
+            }
         }
 
-        if should_map {
-            utils::print_map(subreddit_map);
+        for subparser in self.subparsers.iter_mut() {
+            subparser.print();
         }
         Ok(())
     }

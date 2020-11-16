@@ -3,6 +3,8 @@ mod reddit_client;
 mod utils;
 mod config;
 mod models;
+mod mapper;
+mod subparsers;
 
 fn to_lower(word: Option<&str>) -> Option<String> {
     match word {
@@ -31,8 +33,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
              .help("if given, indicates to print a category map of saved posts"))
         .get_matches();
 
-    let client = reddit_client::RedditClient::new();
     let filter = to_lower(matches.value_of("filter"));
-    client.run(filter, matches.is_present("map"))
-        .await
+    let mut client = reddit_client::RedditClient::new(matches.is_present("map"));
+    //TODO: maybe pass subparsers to run function? so don't have to make client mut'able?
+    client.run(filter).await
 }

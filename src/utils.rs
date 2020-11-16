@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use url::Url;
 use crate::models;
 
@@ -52,22 +51,4 @@ pub fn parse_response(saved_posts: &models::ResponseData,
         };
     }
     saved_posts.after.clone()
-}
-
-pub fn print_map(subreddit_map: HashMap<String, u32>) {
-    let mut list: Vec<(&String, &u32)> = subreddit_map.iter().collect();
-    list.sort_by(|a, b| b.1.cmp(a.1));
-
-    for (name, count) in list {
-        println!("{:<30}: {}", name, count);
-    }
-}
-
-pub fn update_map(subreddit_map: &mut HashMap<String, u32>, saved_posts: &models::ResponseData) {
-    for child in saved_posts.children.iter() {
-        let subreddit_name = child.data.subreddit.to_string();
-        subreddit_map.entry(subreddit_name)
-            .and_modify(|e| *e += 1)
-            .or_insert(1);
-    }
 }
